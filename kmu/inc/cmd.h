@@ -53,8 +53,8 @@ extern "C" {
    _EXT  CK_BBOOL    cmd_UnwrapPrivateSecretkey(P11_UNWRAPTEMPLATE* sUnwrapTemplate, CK_CHAR_PTR sFilePath, CK_BYTE FileFormat);
    _EXT  CK_BBOOL    cmd_ExportPublickey(P11_WRAPTEMPLATE* sExportTemplate, CK_CHAR_PTR sFilePath, CK_BYTE FileFormat);
    _EXT  CK_BBOOL    cmd_ImportPublickey(P11_UNWRAPTEMPLATE* sImportTemplate, CK_CHAR_PTR sFilePath, CK_BYTE FileFormat);
-   _EXT  CK_BBOOL    cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sCompomentNumber);
-   _EXT  CK_BBOOL    cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sCompomentNumber);
+   _EXT  CK_BBOOL    cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sComponentNumber, BYTE bKCVMethod);
+   _EXT  CK_BBOOL    cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sComponentNumber, BYTE bKCVMethod);
 
 #undef _EXT
 

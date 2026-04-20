@@ -891,9 +891,9 @@ CK_LONG  cmdarg_GetKeySize(CK_ULONG uKeyType)
 }
 
 /*
-    FUNCTION:        CK_LONG  cmdarg_GetCompomentsNumber()
+    FUNCTION:        CK_LONG  cmdarg_GetComponentsNumber()
 */
-CK_LONG  cmdarg_GetCompomentsNumber()
+CK_LONG  cmdarg_GetComponentsNumber()
 {
    PARSER_CURRENT_CMD_ARG* arg;
    CK_CHAR_PTR sString = NULL;

@@ -43,6 +43,9 @@
     <ClCompile Include="util\src\tmd.c">
       <Filter>util</Filter>
     </ClCompile>
+    <ClCompile Include="util\src\smalloc.c">
+      <Filter>util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kmu\inc\kmu.h">
@@ -88,6 +91,9 @@
       <Filter>util</Filter>
     </ClInclude>
     <ClInclude Include="util\inc\tmd.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\inc\smalloc.h">
       <Filter>util</Filter>
     </ClInclude>
   </ItemGroup>

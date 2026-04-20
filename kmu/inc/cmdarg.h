@@ -175,7 +175,7 @@ extern "C" {
    _EXT  BYTE                    cmdarg_GetKCVMethod();
    _EXT  CK_ATTRIBUTE_TYPE       cmdarg_AttributeType();
    _EXT  CK_BBOOL                cmdarg_isCryptoUserLoginRequested();
-   _EXT  CK_LONG                 cmdarg_GetCompomentsNumber();
+   _EXT  CK_LONG                 cmdarg_GetComponentsNumber();
    _EXT  CK_CHAR_PTR             cmdarg_GetKeyPassword();
    _EXT  CK_LONG                 cmdarg_GetHSSLevel();
    _EXT  CK_BBOOL                cmdarg_LMSType(CK_LMS_TYPE paLMSType[], CK_LONG uMaxSize);

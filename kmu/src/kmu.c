@@ -154,7 +154,7 @@ const STRING_ARRAY ARG_MZMK_KEYTYPE_HELP = "Key type value\n\t\t\t\t\t-Supported
 const STRING_ARRAY ARG_KEYSIZE = "-keysize";
 const STRING_ARRAY ARG_KEYSIZE_HELP = "key size\n\t\t\t\t\t-Value in byte for DES(8, 16 or 24 bytes), \n\t\t\t\t\t-Value in byte for AES(16, 24 or 32 bytes)\n\t\t\t\t\t-Value in byte for HMAC(1 to 512 bytes) keys\n\t\t\t\t\t-Modulus size in bits for RSA keys\n\t\t\t\t\t-public key size in bits (1312, 1952, 2592) for ML-DSA keys\n\t\t\t\t\t-public key size in bits (800, 1184, 1568) for ML-KEM keys\n\t\t\t\t\t-Not required for other key types";
 const STRING_ARRAY ARG_DERIVEKEY_SIZE_HELP = "derived key size\n\t\t\t\t\t-Value in byte for DES key(8, 16 or 24 bytes), \n\t\t\t\t\t-Value in byte for AES key(16, 24 or 32 bytes)\n\t\t\t\t\t-Value in byte for HMAC or generic key(1 to 512 bytes)";
-const STRING_ARRAY ARG_IMPORTKEY_SIZE_HELP = "Optional. Key size when importing key in compoments\n\t\t\t\t\t-Value in byte for AES key(16, 24 or 32 bytes)\n\t\t\t\t\t-no required when importing wrapped key or other type of keys";
+const STRING_ARRAY ARG_IMPORTKEY_SIZE_HELP = "Optional. Key size when importing key in components\n\t\t\t\t\t-Value in byte for AES key(16, 24 or 32 bytes)\n\t\t\t\t\t-no required when importing wrapped key or other type of keys";
 const STRING_ARRAY ARG_MZMK_KEYSIZE_HELP = "key size\n\t\t\t\t\t-Value in byte for DES(24 bytes), \n\t\t\t\t\t-Value in byte for AES(16, 24 or 32 bytes)";
 
 
@@ -282,7 +282,7 @@ const STRING_ARRAY ARG_KCV_METHOD = "-method";
 const STRING_ARRAY ARG_KCV_METHOD_HELP = "KCV computation method, supported value: \n\t\t\t\t\t-pkcs11\n\t\t\t\t\t\t-DES keys: 3 first bytes of ECB encryption of one block set to 00..00\n\t\t\t\t\t\t-AES keys: 3 first bytes of ECB encryption of one block set to 00..00 \n\t\t\t\t\t-pci(banking) \n\t\t\t\t\t\t-DES keys : 3 first bytes of MAC signature of one block set to 00..00 \n\t\t\t\t\t\t-AES keys : 3 first bytes of MAC signature of one block set to 00..00  \n\t\t\t\t\t-gp (global platform)\n\t\t\t\t\t\t-DES keys : 3 first bytes MAC signature of one block set to 00..00\n\t\t\t\t\t\t-AES keys: 3 first bytes of CMAC signature of one block set to 01..01\n\t\t\t\t\t-hmac-sha-256\n\t\t\t\t\t\t-HMAC, GENERIC keys: : 3 first bytes of HMAC signature of a null block";
 
 const STRING_ARRAY ARG_KCV_COMP = "-clearcomponents";
-const STRING_ARRAY ARG_KCV_COMP_HELP = "generate a key with clear components and calculate KCV for each component with PCI method \n\t\t\t\t\t-Number of compoments for symetric keys between 2 to 16";
+const STRING_ARRAY ARG_KCV_COMP_HELP = "generate a key with clear components and calculate KCV for each component with PCI method \n\t\t\t\t\t-Number of components for symetric keys between 2 to 16";
 
 const STRING_ARRAY ARG_KEYPASSWORD_COMP = "-keypassword";
 const STRING_ARRAY ARG_KEYPASSWORD_COMP_HELP = "password of the key for PBKDF2 key generation. \n\t\t\t\t\t-Mandatory if using pbfkd2.";

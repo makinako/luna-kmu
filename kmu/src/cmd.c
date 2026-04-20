@@ -35,6 +35,7 @@
 #include "console.h"
 #include "tr31.h"
 #include "tmd.h"
+#include "smalloc.h"
 
 #define MAX_LABEL_SIZE        100
 CK_CHAR  cmd_Label[MAX_LABEL_SIZE];
@@ -280,6 +281,7 @@ CK_BBOOL cmd_kmu_generateKey(CK_BBOOL bIsConsole)
    CK_BBOOL							bKeyGenPair = CK_FALSE;
    CK_BBOOL                   bIsSubPrime = CK_FALSE;
    CK_LONG                    sComponentNumber;
+   BYTE                       bKCV_Method = 0;
 
    do
    {
@@ -555,6 +557,17 @@ CK_BBOOL cmd_kmu_generateKey(CK_BBOOL bIsConsole)
                printf("Invalid or missing argument  : -keysize \n");
                return CK_FALSE;
             }
+
+            // Allow specification of KCV method or default to KCV_PCI
+            if ((bKCV_Method = cmdarg_GetKCVMethod()) == 0)
+            {
+              bKCV_Method = KCV_PCI;
+            }
+            if (bKCV_Method != KCV_PCI && bKCV_Method != KCV_PKCS11) 
+            {
+              printf("Invalid or missing argument  : -method (KCV) \n");
+              return CK_FALSE;
+            }
             break;
 
          case CKK_GENERIC_SECRET:   
@@ -572,16 +585,18 @@ CK_BBOOL cmd_kmu_generateKey(CK_BBOOL bIsConsole)
                printf("Invalid or missing argument  : -keysize \n");
                return CK_FALSE;
             }
+            bKCV_Method = KCV_PKCS11;
             break;
+
          case CKK_SM4:
             // put the size for SM4
             sKeyGenTemplate.skeySize = SM4_KEY_LENGTH;
          }
 
          // get number of compomenent
-         sComponentNumber = cmdarg_GetCompomentsNumber();
+         sComponentNumber = cmdarg_GetComponentsNumber();
 
-         // if no compoment, just generate a key
+         // if no component, just generate a key
          if (sComponentNumber == 0)
          {
             // generate key
@@ -618,11 +633,11 @@ CK_BBOOL cmd_kmu_generateKey(CK_BBOOL bIsConsole)
                printf("Wrong key size\n");
                return CK_FALSE;
             default:
-               printf("Only DES and AES key are supported for generation using compoments\n");
+               printf("Only DES and AES key are supported for generation using components\n");
                return CK_FALSE;
             }
 
-            return cmd_GenerateSecretKeyWithComponent(&sKeyGenTemplate, sComponentNumber);
+            return cmd_GenerateSecretKeyWithComponent(&sKeyGenTemplate, sComponentNumber, bKCV_Method);
          }
       }
    } while (FALSE);
@@ -1049,9 +1064,9 @@ CK_BBOOL cmd_kmu_import(CK_BBOOL bIsConsole)
       }
 
       // get number of compomenent
-      sComponentNumber = cmdarg_GetCompomentsNumber();
-
-      // if compoment requested, import with component.
+      sComponentNumber = cmdarg_GetComponentsNumber();
+      byte bKCV_Method = 0;
+      // if component requested, import with component.
       if (sComponentNumber != 0)
       {
          sUnwrapTemplate.sClass = CKO_SECRET_KEY;
@@ -1066,6 +1081,17 @@ CK_BBOOL cmd_kmu_import(CK_BBOOL bIsConsole)
                printf("Invalid or missing arg : -keysize\n");
                break;;
             }
+         }
+
+         // Allow specification of KCV method or default to KCV_PCI
+         if ((bKCV_Method = cmdarg_GetKCVMethod()) == 0)
+         {
+           bKCV_Method = KCV_PCI;
+         }
+         if (bKCV_Method != KCV_PCI && bKCV_Method != KCV_PKCS11)
+         {
+           printf("Invalid or missing argument  : -method (KCV) \n");
+           return CK_FALSE;
          }
 
          // check key type is DES and AES
@@ -1088,12 +1114,12 @@ CK_BBOOL cmd_kmu_import(CK_BBOOL bIsConsole)
             sUnwrapTemplate.skeySize = DES3_KEY_LENGTH;
             break;
          default:
-            printf("Only DES and AES key are supported for importing key using compoments\n");
+            printf("Only DES and AES key are supported for importing key using components\n");
             return CK_FALSE;
          }
 
-         // execute import with compoments
-         return cmd_ImportSecretKeyWithComponent(&sUnwrapTemplate, sComponentNumber);
+         // execute import with components
+         return cmd_ImportSecretKeyWithComponent(&sUnwrapTemplate, sComponentNumber, bKCV_Method);
       }
 
       // get class value from arg -keyclass
@@ -2748,13 +2774,13 @@ CK_BYTE cmd_setattributeArray(CK_OBJECT_HANDLE hHandle, BYTE bArgType, CK_ATTRIB
 }
 
 /*
-    FUNCTION:        cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sCompomentNumber)
+    FUNCTION:        cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sComponentNumber)
 */
-CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sCompomentNumber)
+CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate, CK_LONG sComponentNumber, BYTE bKCVMethod)
 {
    CK_LONG sLoop;
    CK_LONG sKeyLength;
-   CK_BYTE_PTR pbCompoment;
+   CK_BYTE_PTR pbComponent;
    CK_BYTE_PTR pbKey;
    P11_UNWRAPTEMPLATE sKeyTemplate = {0};
    CK_OBJECT_HANDLE  hWrapKey = 0;
@@ -2762,10 +2788,10 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
    CK_BYTE_PTR pKcvBuffer;
    CK_BBOOL bError = CK_FALSE;
 
-   printf("This command generates key as several compoments and subject to security issues.\n");
+   printf("This command generates key as several components and subject to security issues.\n");
    printf("This operation requires a specific security procedure to avoid key holder to see multiple key components\n");
    printf("The command will request to clear the console after the generation of each component\n");
-   printf("Start the generation of the first key compoment enter (Y/N): ");
+   printf("Start the generation of the first key component enter (Y/N): ");
 
    if (!((Console_RequestString() == 1) && ((Console_GetBuffer()[0] == 'Y') || (Console_GetBuffer()[0] == 'y'))))
    {
@@ -2781,14 +2807,14 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
       
       sKeyLength = sKeyGenTemplate->skeySize;
 
-      // allocate a buffer for compoments generation
-      pbCompoment = malloc(sKeyLength);
+      // securely allocate a buffer for components generation (page locked)
+      pbComponent = smalloc(sKeyLength);
 
-      // allocate a buffer for key
-      pbKey = malloc(sKeyLength);
+      // securely allocate a buffer for key (page locked)
+      pbKey = smalloc(sKeyLength);
 
       // check memory allocation
-      if (pbCompoment == NULL || pbKey == NULL || hWrapKey == 0)
+      if (pbComponent == NULL || pbKey == NULL || hWrapKey == 0)
       {
          break;
       }
@@ -2796,25 +2822,25 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
       // fill the key buffer
       memset(pbKey, 0, sKeyLength);
    
-      for (sLoop = 1; sLoop <= sCompomentNumber; sLoop++)
+      for (sLoop = 1; sLoop <= sComponentNumber; sLoop++)
       {
-         // generate compoment X value with random from HSM
-         P11_GenerateRandom(pbCompoment, sKeyLength);
+         // generate component X value with random from HSM
+         P11_GenerateRandom(pbComponent, sKeyLength);
 
          // if des key, compute parity bit, checked by hsm when unwrapping the key
          if (sKeyGenTemplate->skeyType != CKK_AES)
          {
-            str_ByteArrayComputeParityBit(pbCompoment, sKeyLength);
+            str_ByteArrayComputeParityBit(pbComponent, sKeyLength);
          }
 
          // Xor the key with component
-         str_ByteArrayXOR(pbKey, pbCompoment, sKeyLength);
+         str_ByteArrayXOR(pbKey, pbComponent, sKeyLength);
 
-         // print compoment value
+         // print component value
          printf("Clear component %i : ", sLoop);
-         str_DisplayByteArraytoStringWithSpace(pbCompoment, sKeyLength, 2);
+         str_DisplayByteArraytoStringWithSpace(pbComponent, sKeyLength, 2);
 
-         // load key compoment in the HSM as session key (only needed to compute KCV)
+         // load key component in the HSM as session key (only needed to compute KCV)
          sKeyTemplate.sClass = sKeyGenTemplate->sClass;
          sKeyTemplate.skeyType = sKeyGenTemplate->skeyType;
          //sKeyTemplate.skeySize = sKeyGenTemplate->skeySize;
@@ -2827,7 +2853,7 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
          sKeyTemplate.bCKA_Sensitive = CK_TRUE;
          sKeyTemplate.bCKA_Private = CK_TRUE;
          sKeyTemplate.hWrappingKey = hWrapKey;
-         hKey = P11_ImportClearSymetricKey(&sKeyTemplate, pbCompoment, sKeyLength);
+         hKey = P11_ImportClearSymetricKey(&sKeyTemplate, pbComponent, sKeyLength);
 
          // stop loop if error
          if (hKey == 0)
@@ -2837,7 +2863,7 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
          else
          {
             // compute KCV for component
-            if (P11_ComputeKCV(KCV_PCI, hKey, &pKcvBuffer) == CK_TRUE)
+            if (P11_ComputeKCV(bKCVMethod, hKey, &pKcvBuffer) == CK_TRUE)
             {
                printf("Key check value for component %i : ", sLoop);
                str_DisplayByteArraytoString("", pKcvBuffer, 3);
@@ -2907,7 +2933,7 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
             printf("Key successfully generated, handle is : %i, label is : %s \n", hKey, sKeyGenTemplate->pKeyLabel);
 
             // compute KCV for component
-            if (P11_ComputeKCV(KCV_PCI, hKey, &pKcvBuffer) == CK_TRUE)
+            if (P11_ComputeKCV(bKCVMethod, hKey, &pKcvBuffer) == CK_TRUE)
             {
                str_DisplayByteArraytoString("Key check value : ", pKcvBuffer, 3);
                printf("\n");
@@ -2919,9 +2945,9 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
       }
    } while (FALSE);
 
-   // free memory
-   free(pbCompoment);
-   free(pbKey);
+   // securely free memory
+   sfree(pbComponent, sKeyLength);
+   sfree(pbKey, sKeyLength);
 
    // delete temp wrap key
    P11_DeleteObject(hWrapKey);
@@ -2932,18 +2958,18 @@ CK_BBOOL cmd_GenerateSecretKeyWithComponent(P11_KEYGENTEMPLATE* sKeyGenTemplate,
       return CK_TRUE;
    }
 
-   printf("cmd_GenerateKeyByComponent error\n");
+   printf("cmd_GenerateKeyWithComponent error\n");
    return CK_FALSE;
 }
 
 /*
-    FUNCTION:        CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sCompomentNumber)
+    FUNCTION:        CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sComponentNumber)
 */
-CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sCompomentNumber)
+CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, CK_LONG sComponentNumber, BYTE bKCVMethod)
 {
    CK_LONG sLoop;
    CK_LONG sKeyLength;
-   CK_BYTE_PTR pbCompoment;
+   CK_BYTE_PTR pbComponent;
    CK_BYTE_PTR pbKey;
    P11_UNWRAPTEMPLATE sKeyCompTemplate = { 0 };
    CK_OBJECT_HANDLE  hWrapKey = 0;
@@ -2952,10 +2978,10 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
    CK_BBOOL bError = CK_FALSE;
    CK_ULONG uLength;
 
-   printf("This command imports key as several compoments and subject to security issues.\n");
+   printf("This command imports key as several components and subject to security issues.\n");
    printf("This operation requires a specific security procedure to avoid key holder to see multiple key components\n");
    printf("The command will request to clear the console after importing each component\n");
-   printf("Start to import the first key compoment enter (Y/N): ");
+   printf("Start to import the first key component enter (Y/N): ");
 
    if (!((Console_RequestString() == 1) && ((Console_GetBuffer()[0] == 'Y') || (Console_GetBuffer()[0] == 'y'))))
    {
@@ -2970,14 +2996,14 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
 
       sKeyLength = sImportTemplate->skeySize;
 
-      // allocate a buffer for compoments
-      pbCompoment = malloc(sKeyLength);
+      // allocate a buffer for components
+      pbComponent = smalloc(sKeyLength);
 
       // allocate a buffer for key
-      pbKey = malloc(sKeyLength);
+      pbKey = smalloc(sKeyLength);
 
       // check memory allocation
-      if (pbCompoment == NULL || pbKey == NULL || hWrapKey == 0)
+      if (pbComponent == NULL || pbKey == NULL || hWrapKey == 0)
       {
          break;
       }
@@ -2986,10 +3012,10 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
       memset(pbKey, 0, sKeyLength);
 
 
-      for (sLoop = 1; sLoop <= sCompomentNumber; sLoop++)
+      for (sLoop = 1; sLoop <= sComponentNumber; sLoop++)
       {
 
-         // print compoment value
+         // print component value
          printf("Enter component %i : ", sLoop);
 
          // request component
@@ -3006,14 +3032,14 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
          // check the length of component match with the key size
          if (sKeyLength != uLength)
          {
-            printf("The length of the compoment does not match with the key length\n");
+            printf("The length of the component does not match with the key length\n");
             //ask again for component
             sLoop--;
             continue;
          }
 
-         // Copy compoment from console to pbCompoment
-         memcpy(pbCompoment, Console_GetBuffer(), uLength);
+         // Copy component from console to pbComponent
+         memcpy(pbComponent, Console_GetBuffer(), uLength);
 
          // clear component in the console buffer (2 time the size of the component array)
          memset(Console_GetBuffer(), 0, (CK_ULONG)(uLength < 1));
@@ -3021,13 +3047,13 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
          // if des key, compute parity bit, checked by hsm when unwrapping the key
          if (sImportTemplate->skeyType != CKK_AES)
          {
-            str_ByteArrayComputeParityBit(pbCompoment, sKeyLength);
+            str_ByteArrayComputeParityBit(pbComponent, sKeyLength);
          }
 
          // Xor the key with component
-         str_ByteArrayXOR(pbKey, pbCompoment, sKeyLength);
+         str_ByteArrayXOR(pbKey, pbComponent, sKeyLength);
 
-         // load key compoment in the HSM as session key (only needed to compute KCV)
+         // load key component in the HSM as session key (only needed to compute KCV)
          sKeyCompTemplate.sClass = sImportTemplate->sClass;
          sKeyCompTemplate.skeyType = sImportTemplate->skeyType;
          sKeyCompTemplate.skeySize = sImportTemplate->skeySize;
@@ -3038,7 +3064,7 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
          sKeyCompTemplate.bCKA_Sensitive = CK_TRUE;
          sKeyCompTemplate.bCKA_Private = CK_TRUE;
          sKeyCompTemplate.hWrappingKey = hWrapKey;
-         hKey = P11_ImportClearSymetricKey(&sKeyCompTemplate, pbCompoment, sKeyLength);
+         hKey = P11_ImportClearSymetricKey(&sKeyCompTemplate, pbComponent, sKeyLength);
 
          // stop loop if error
          if (hKey == 0)
@@ -3048,7 +3074,7 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
          else
          {
             // compute KCV for component
-            if (P11_ComputeKCV(KCV_PCI, hKey, &pKcvBuffer) == CK_TRUE)
+            if (P11_ComputeKCV(bKCVMethod, hKey, &pKcvBuffer) == CK_TRUE)
             {
                printf("Key check value for component %i : ", sLoop);
                str_DisplayByteArraytoString("", pKcvBuffer, 3);
@@ -3059,7 +3085,7 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
             }
             else
             {
-               bError = CK_TRUE;
+               bError = CK_TRUE; 
             }
 
             // delete component key
@@ -3102,7 +3128,7 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
             printf("Key successfully imported, handle is : %i, label is : %s \n", hKey, sImportTemplate->pKeyLabel);
 
             // compute KCV for component
-            if (P11_ComputeKCV(KCV_PCI, hKey, &pKcvBuffer) == CK_TRUE)
+            if (P11_ComputeKCV(bKCVMethod, hKey, &pKcvBuffer) == CK_TRUE)
             {
                str_DisplayByteArraytoString("Key check value : ", pKcvBuffer, 3);
                printf("\n");
@@ -3116,8 +3142,8 @@ CK_BBOOL cmd_ImportSecretKeyWithComponent(P11_UNWRAPTEMPLATE* sImportTemplate, C
    } while (FALSE);
 
    // free memory
-   free(pbCompoment);
-   free(pbKey);
+   sfree(pbComponent, sKeyLength);
+   sfree(pbKey, sKeyLength);
 
    // delete temp wrap key
    P11_DeleteObject(hWrapKey);
